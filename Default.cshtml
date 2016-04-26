@@ -141,10 +141,12 @@
                 @foreach (var item in response.Results)
                 {
                     <li>
-                        <h3>@item.Document["genre"]</h3>
+                        <h3>@item.Document["albumTitle"]</h3>
+                        <p>@item.Document["artistName"]</p>
+                        <p>@item.Document["genre"]</p>
                         <p>@item.Document["orderableOnline"]</p>
-                        <p>@item.Document["tags"]</p>
                         <p>@item.Document["rating"] Rating</p>
+                        <p>@item.Document["genreDescription"]</p>
                         <br />
                     </li>
                 }
