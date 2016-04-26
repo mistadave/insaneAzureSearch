@@ -1,0 +1,156 @@
+﻿@using System.Collections.Specialized;
+@using System.Configuration;
+@using Microsoft.Azure.Search;
+@using Microsoft.Azure.Search.Models;
+
+@{
+    Layout = "~/_SiteLayout.cshtml";
+    Page.Title = "Search Sample";
+}
+
+@{
+    // This sample application uses a pre-created Azure Search service loaded with data from the USGS and is meant
+    // to demonstrate some of the basic capabilities of Azure Search.
+    // Data used in this application was provided by the United States Geological Survey (USGS): http://aka.ms/usgs.
+    // It allows you to search a dataset of almost 3 million landmarks and geological features around the United States
+    // such as hospitals, schools, parks, lakes, etc.
+
+    // To learn more about Azure Search, please visit the MSDN Documentation: http://aka.ms/azsearchdocs
+
+    string searchText = Request.Unvalidated["q"];
+    string filterExpression = Request.Unvalidated["filter"];
+    string searchURL = Request.Unvalidated["surl"];
+
+    DocumentSearchResponse response = null;
+    if (!string.IsNullOrEmpty(searchText))
+    {
+        searchText = searchText.Trim();
+
+        // Retrieve search service name and an api key from configuration
+        string searchServiceName = ConfigurationManager.AppSettings["SearchServiceName"];
+        string apiKey = ConfigurationManager.AppSettings["SearchServiceApiKey"];
+
+        var searchClient = new SearchServiceClient(searchServiceName, new SearchCredentials(apiKey));
+        var indexClient = searchClient.Indexes.GetClient("temp");
+
+        // Set the Search parameters used when executing the search request
+        // For more information on additional parameter options, please visit: http://aka.ms/azsearchparms
+        var sp = new SearchParameters
+        {
+            // Specify whether Any or All of the search terms must be matched in order to count the document as a match.
+            SearchMode = SearchMode.All,
+            // Include a count of results in the query result
+            IncludeTotalResultCount = true,
+            // Return an aggregated count of feature classes based on the specified query
+            Facets = new[] { "FEATURE_CLASS" },
+            // Limit the results to 20 documents
+            Top = 20
+        };
+
+        if (!string.IsNullOrEmpty(filterExpression))
+        {
+            // Add a search filter that will limit the search terms based on a specified expression.
+            // This is often used with facets so that when a user selects a facet, the query is re-executed,
+            // but limited based on the chosen facet value to further refine results
+            sp.Filter = filterExpression;
+        }
+
+        // Execute the search query based on the specified search text and search parameters
+        response = indexClient.Documents.Search(searchText); //indexClient.Documents.Search(searchText, sp);
+
+    }
+}
+
+@functions
+{
+    private string GetFacetQueryString(string facetKey, string facetValue)
+    {
+        NameValueCollection queryString = HttpUtility.ParseQueryString(Request.Url.Query);
+        queryString["filter"] = string.Format("{0} eq '{1}'", HttpUtility.UrlEncode(facetKey), HttpUtility.UrlEncode(facetValue));
+        return queryString.ToString();
+    }
+}
+
+
+
+@section featured {
+<section class="featured">
+    <div class="content-wrapper">
+        <hgroup class="title">
+            <h1>@Page.Title.</h1>
+            <h2>This is a quick sample of Azure Search.</h2>
+        </hgroup>
+        <p>
+            Search without facets right now.
+        </p>
+    </div>
+</section>
+}
+
+<h3>Search Form</h3>
+
+<ol class="round">
+    <li class="one">
+        <h5>Search</h5>
+        <!-- Form to allow user to enter search terms -->
+        <form class="form-inline" role="search">
+            <div class="form-group">
+                <input type="search" name="q" id="q" autocomplete="off" size="80" placeholder="Type something to search, i.e. 'park'." class="form-control" value="@searchText" />
+                <button type="submit" id="search" class="btn btn-primary">Search</button>
+            </div>
+        </form>
+    </li>
+
+@if(response != null) { 
+    <li class="two">
+        <h5>Display data</h5>
+
+        @if (response.Count == 0)
+        {
+        <p style="padding-top:20px">No results found for "@searchText"</p>
+        <h3>Suggestions:</h3>
+        <ul>
+            <li>Ensure words are spelled correctly.</li>
+            <li>Try rephrasing keywords or using synonyms.</li>
+            <li>Try less specific keywords.</li>
+        </ul>
+        }
+        else
+        {
+        <div class="col-xs-3 col-md-2">
+            <h3>Feature Class</h3>
+            <ul class="list-unstyled">
+                @if (!string.IsNullOrEmpty(filterExpression))
+                {
+                    <li><a href="?q=@HttpUtility.UrlEncode(searchText)">All</a></li>
+                }
+                <!-- Cycle through the facet results and show the values and counts -->
+                @if(response.Facets != null) { 
+                foreach (var facet in response.Facets["temp"])
+                {
+                    <li><a href="?@GetFacetQueryString("temp", (string)facet.Value)">@facet.Value (@facet.Count)</a></li>
+                }
+                }
+            </ul>
+        </div>
+        <div class="col-xs-12 col-sm-6 col-md-10">
+            <p style="padding-top:20px">1 - @response.Results.Count of @response.Count results for "@searchText"</p>
+
+            <ul class="list-unstyled">
+                <!-- Cycle through the search results -->
+                @foreach (var item in response.Results)
+                {
+                    <li>
+                        <h3>@item.Document["genre"]</h3>
+                        <p>@item.Document["orderableOnline"]</p>
+                        <p>@item.Document["tags"]</p>
+                        <p>@item.Document["rating"] Rating</p>
+                        <br />
+                    </li>
+                }
+            </ul>
+        </div>
+        }
+    </li>
+    }
+</ol>
