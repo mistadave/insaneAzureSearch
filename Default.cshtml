@@ -42,7 +42,7 @@
             // Include a count of results in the query result
             IncludeTotalResultCount = true,
             // Return an aggregated count of feature classes based on the specified query
-            Facets = new[] { "FEATURE_CLASS" },
+            Facets = new[] { "genre" },
             // Limit the results to 20 documents
             Top = 20
         };
@@ -56,7 +56,7 @@
         }
 
         // Execute the search query based on the specified search text and search parameters
-        response = indexClient.Documents.Search(searchText); //indexClient.Documents.Search(searchText, sp);
+        response = indexClient.Documents.Search(searchText,sp); //indexClient.Documents.Search(searchText, sp);
 
     }
 }
@@ -118,7 +118,7 @@
         else
         {
         <div class="col-xs-3 col-md-2">
-            <h3>Feature Class</h3>
+            <h3>Genre Filter</h3>
             <ul class="list-unstyled">
                 @if (!string.IsNullOrEmpty(filterExpression))
                 {
@@ -126,9 +126,9 @@
                 }
                 <!-- Cycle through the facet results and show the values and counts -->
                 @if(response.Facets != null) { 
-                foreach (var facet in response.Facets["temp"])
+                foreach (var facet in response.Facets["genre"])
                 {
-                    <li><a href="?@GetFacetQueryString("temp", (string)facet.Value)">@facet.Value (@facet.Count)</a></li>
+                    <li><a href="?@GetFacetQueryString("genre", (string)facet.Value)">@facet.Value (@facet.Count)</a></li>
                 }
                 }
             </ul>
